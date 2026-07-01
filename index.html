@@ -158,60 +158,23 @@
       rgba(255,255,255,var(--highlight-opacity)) var(--rib-width)
     );
   }
-  /* LAYER 4: legibility scrim behind the title text */
-  .scrim {
-    z-index: 4; pointer-events: none;
-    background:
-      linear-gradient(to top,   rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 45%),
-      linear-gradient(to right, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 40%);
-  }
-  /* LAYER 5: film grain — tiled monochrome feTurbulence noise, overlay-blended.
-     Sits above the glass so it grains the whole surface, but below the UI text. */
+  /* LAYER 4: film grain — tiled monochrome feTurbulence noise, overlay-blended.
+     Sits above the glass so it grains the whole surface. */
   .grain {
-    z-index: 5; pointer-events: none;
+    z-index: 4; pointer-events: none;
     opacity: var(--grain);
     mix-blend-mode: overlay;
     background-repeat: repeat;
     background-size: 140px 140px;
     background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='140'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.85'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E");
   }
-  /* LAYER 6: vignette — radial edge darkening over the whole surface */
+  /* LAYER 5: vignette — radial edge darkening over the whole surface */
   .vignette {
-    z-index: 6; pointer-events: none;
+    z-index: 5; pointer-events: none;
     background: radial-gradient(ellipse at center,
       rgba(0,0,0,0) 45%,
       rgba(0,0,0,var(--vignette)) 120%);
   }
-  /* LAYER 7: sharp UI text */
-  .ui { z-index: 7; }
-
-  .genre {
-    position: absolute; left: 50%; transform: translateX(-50%);
-    font-size: clamp(10px, 1.1vw, 13px); letter-spacing: 0.28em; text-transform: uppercase;
-    font-weight: 500; color: rgba(243,243,243,0.85); white-space: nowrap;
-    text-shadow: 0 1px 8px rgba(0,0,0,0.5);
-  }
-  .genre--top    { top: clamp(20px, 4vh, 40px); }
-  .genre--bottom { bottom: clamp(20px, 4vh, 40px); }
-  .title-block { position: absolute; left: clamp(20px, 5vw, 64px); bottom: clamp(96px, 18vh, 168px); max-width: min(90vw, 900px); }
-  .title { margin: 0; font-weight: 600; line-height: 0.98; letter-spacing: -0.02em; font-size: clamp(40px, 8vw, 120px); text-shadow: 0 2px 24px rgba(0,0,0,0.45); }
-  .title span { display: block; }
-  .pill {
-    display: inline-block; margin-top: clamp(14px, 2.5vh, 26px); padding: 8px 18px;
-    border: 1px solid rgba(255,255,255,0.28); border-radius: 999px; background: rgba(255,255,255,0.08);
-    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-    font-size: clamp(12px, 1.3vw, 15px); color: rgba(243,243,243,0.92);
-  }
-  .play {
-    position: absolute; left: clamp(20px, 5vw, 64px); bottom: clamp(24px, 5vh, 44px);
-    display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px 9px 16px;
-    border: 1px solid rgba(255,255,255,0.24); border-radius: 999px; background: rgba(20,20,20,0.45);
-    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-    color: #f3f3f3; font: inherit; font-size: 14px; cursor: pointer; transition: 0.2s;
-  }
-  .play:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.4); }
-  .play svg { width: 11px; height: 12px; fill: currentColor; }
-  .play kbd { font: inherit; font-size: 11px; line-height: 1; padding: 4px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.10); }
 
   .filters { position: absolute; width: 0; height: 0; overflow: hidden; }
 
@@ -312,32 +275,18 @@
           <button class="btn" id="resetBtn">Reset</button>
           <button class="btn primary" id="downloadBtn">Download PNG</button>
         </div>
-        <p class="hint">Export applies the glass to the whole image at full resolution (no title text). Uploaded files always export; some remote URLs block export for security — upload the file in that case.</p>
+        <p class="hint">Export applies the effect to the whole image at full resolution. Uploaded files always export; some remote URLs block export for security — upload the file in that case.</p>
       </div>
     </aside>
 
     <!-- ================= PREVIEW ================= -->
     <main class="stage" id="stage">
-      <!-- LAYER ORDER: photo → fluted-glass → ribs → scrim → grain → vignette → sharp UI -->
+      <!-- LAYER ORDER: photo → fluted-glass → ribs → grain → vignette -->
       <div class="layer bg"></div>
       <div class="layer glass"></div>
       <div class="layer ribs"></div>
-      <div class="layer scrim"></div>
       <div class="layer grain"></div>
       <div class="layer vignette"></div>
-
-      <div class="layer ui">
-        <p class="genre genre--top">Deep House &bull; Downtempo &bull; Drum &amp; Bass &bull; Trip-Hop</p>
-        <div class="title-block">
-          <h1 class="title"><span>I Don't Need</span><span>The Light</span></h1>
-          <span class="pill">by FoldingSky</span>
-        </div>
-        <button class="play" type="button" aria-label="Play">
-          <svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 0l10 6-10 6z"/></svg>
-          Play <kbd>K</kbd>
-        </button>
-        <p class="genre genre--bottom">Deep House &bull; Downtempo &bull; Drum &amp; Bass &bull; Trip-Hop</p>
-      </div>
     </main>
   </div>
 
@@ -596,13 +545,9 @@
       }, 'image/png');
     });
 
-    /* ---- Mobile drawer + shortcut ----------------------------------------- */
+    /* ---- Mobile drawer ----------------------------------------------------- */
     document.getElementById('menuBtn').addEventListener('click', () =>
       document.getElementById('panel').classList.toggle('open'));
-    window.addEventListener('keydown', e => {
-      if (e.key.toLowerCase() === 'k' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName))
-        document.querySelector('.play').classList.toggle('is-playing');
-    });
 
     syncGlass();
   </script>
