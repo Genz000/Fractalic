@@ -18,6 +18,7 @@
     --highlight-opacity:    0.5;
     --shadow-opacity:       0.35;
     --grain:                0.12;    /* film-grain intensity (overlay opacity) */
+    --vignette:             0.4;     /* edge-darkening strength */
     --gray:                 1;       /* 1 = grayscale, 0 = colour */
 
     /* Current working image — sliders don't touch this; the uploader does. */
@@ -157,7 +158,7 @@
       rgba(255,255,255,var(--highlight-opacity)) var(--rib-width)
     );
   }
-  /* LAYER 4: legibility scrim (only shown with the text overlay) */
+  /* LAYER 4: legibility scrim behind the title text */
   .scrim {
     z-index: 4; pointer-events: none;
     background:
@@ -174,9 +175,15 @@
     background-size: 140px 140px;
     background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='140'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.85'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E");
   }
-  /* LAYER 6: sharp UI text (toggleable) */
-  .ui { z-index: 6; }
-  .stage.no-text .scrim, .stage.no-text .ui { display: none; }
+  /* LAYER 6: vignette — radial edge darkening over the whole surface */
+  .vignette {
+    z-index: 6; pointer-events: none;
+    background: radial-gradient(ellipse at center,
+      rgba(0,0,0,0) 45%,
+      rgba(0,0,0,var(--vignette)) 120%);
+  }
+  /* LAYER 7: sharp UI text */
+  .ui { z-index: 7; }
 
   .genre {
     position: absolute; left: 50%; transform: translateX(-50%);
@@ -285,9 +292,9 @@
           <span>Grayscale</span>
           <label class="switch"><input type="checkbox" id="grayToggle" checked><span class="track"></span></label>
         </div>
-        <div class="toggle">
-          <span>Show title overlay</span>
-          <label class="switch"><input type="checkbox" id="textToggle" checked><span class="track"></span></label>
+        <div class="ctrl" data-var="--vignette" data-min="0" data-max="1" data-step="0.02" data-unit="">
+          <div class="row"><span class="name">Vignette</span><span class="val"></span></div>
+          <input type="range" />
         </div>
       </div>
 
@@ -311,12 +318,13 @@
 
     <!-- ================= PREVIEW ================= -->
     <main class="stage" id="stage">
-      <!-- LAYER ORDER: photo → fluted-glass → ribs → scrim → sharp UI -->
+      <!-- LAYER ORDER: photo → fluted-glass → ribs → scrim → grain → vignette → sharp UI -->
       <div class="layer bg"></div>
       <div class="layer glass"></div>
       <div class="layer ribs"></div>
       <div class="layer scrim"></div>
       <div class="layer grain"></div>
+      <div class="layer vignette"></div>
 
       <div class="layer ui">
         <p class="genre genre--top">Deep House &bull; Downtempo &bull; Drum &amp; Bass &bull; Trip-Hop</p>
@@ -408,11 +416,9 @@
       });
     });
 
-    /* ---- Toggles ----------------------------------------------------------- */
+    /* ---- Grayscale toggle -------------------------------------------------- */
     const grayToggle = document.getElementById('grayToggle');
-    const textToggle = document.getElementById('textToggle');
     grayToggle.addEventListener('change', () => root.style.setProperty('--gray', grayToggle.checked ? '1' : '0'));
-    textToggle.addEventListener('change', () => stage.classList.toggle('no-text', !textToggle.checked));
 
     /* ---- Tiny non-blocking toast (never use alert — it freezes previews) --- */
     let toastEl;
@@ -491,7 +497,7 @@
     stage.addEventListener('drop', e => { e.preventDefault(); readDropped(e); });
 
     /* ---- Reset ------------------------------------------------------------- */
-    const DEFAULTS = { '--rib-width':'28px', '--refraction-strength':'18', '--blur':'1.5px', '--highlight-opacity':'0.5', '--shadow-opacity':'0.35', '--grain':'0.12' };
+    const DEFAULTS = { '--rib-width':'28px', '--refraction-strength':'18', '--blur':'1.5px', '--highlight-opacity':'0.5', '--shadow-opacity':'0.35', '--grain':'0.12', '--vignette':'0.4' };
     document.getElementById('resetBtn').addEventListener('click', () => {
       for (const k in DEFAULTS) root.style.setProperty(k, DEFAULTS[k]);
       document.querySelectorAll('.ctrl').forEach(ctrl => {
@@ -523,6 +529,7 @@
       const hi       = num('--highlight-opacity');
       const sh       = num('--shadow-opacity');
       const grain    = num('--grain');
+      const vign     = num('--vignette');
       const gray     = grayToggle.checked;
 
       // 1) frosted source (grayscale + contrast + blur, all BEFORE displacement)
@@ -567,6 +574,16 @@
         o.drawImage(gn, 0, 0);
         o.globalAlpha = 1;
         o.globalCompositeOperation = 'source-over';
+      }
+
+      // 5) vignette — radial edge darkening (circular approx of the CSS ellipse)
+      if (vign > 0) {
+        const cx = W / 2, cy = H / 2;
+        const rg = o.createRadialGradient(cx, cy, Math.min(W, H) * 0.30, cx, cy, Math.hypot(W, H) * 0.62);
+        rg.addColorStop(0, 'rgba(0,0,0,0)');
+        rg.addColorStop(1, 'rgba(0,0,0,' + vign + ')');
+        o.fillStyle = rg;
+        o.fillRect(0, 0, W, H);
       }
 
       out.toBlob(b => {
