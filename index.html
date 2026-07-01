@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fractalic — Fluted Glass Studio</title>
+
+<style>
+  /* ==========================================================================
+     TUNABLES — the studio's sliders write straight into these custom properties.
+     The rib gradient reacts instantly; the JS bridge (syncGlass) mirrors the
+     SVG-side ones (period / refraction / blur) into the filter on every change.
+     ========================================================================== */
+  :root {
+    --rib-width:            28px;
+    --refraction-strength:  18;
+    --blur:                 1.5px;
+    --highlight-opacity:    0.5;
+    --shadow-opacity:       0.35;
+    --grain:                0.12;    /* film-grain intensity (overlay opacity) */
+    --gray:                 1;       /* 1 = grayscale, 0 = colour */
+
+    /* Current working image — sliders don't touch this; the uploader does. */
+    --bg-image: url("https://picsum.photos/id/1074/1600/1200");
+
+    /* Panel palette */
+    --panel:  #141414;
+    --panel2: #1c1c1c;
+    --line:   #2b2b2b;
+    --text:   #e9e9e9;
+    --muted:  #8f8f8f;
+    --accent: #d8d8d8;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #f3f3f3;
+    background: #0d0d0d;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* ---- App shell: controls panel + preview stage -------------------------- */
+  .studio { display: grid; grid-template-columns: 320px 1fr; height: 100%; }
+
+  /* ---- Controls panel ----------------------------------------------------- */
+  .panel {
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+    padding: 20px 18px 32px;
+    z-index: 20;
+  }
+  .panel h1 {
+    font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase;
+    font-weight: 600; margin: 2px 0 2px;
+  }
+  .panel .sub { font-size: 11px; color: var(--muted); letter-spacing: 0.05em; margin-bottom: 20px; }
+
+  .group { border-top: 1px solid var(--line); padding: 16px 0 4px; }
+  .group:first-of-type { border-top: none; }
+  .group > .label {
+    font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px; display: block;
+  }
+
+  /* Drop zone / uploader */
+  .drop {
+    border: 1px dashed var(--line); border-radius: 10px; padding: 18px 14px;
+    text-align: center; cursor: pointer; transition: 0.15s; background: var(--panel2);
+    display: block;
+  }
+  .drop:hover, .drop.drag { border-color: var(--accent); background: #222; }
+  .drop .ico { font-size: 20px; display: block; margin-bottom: 6px; opacity: 0.6; }
+  .drop p { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .drop b { color: var(--text); font-weight: 600; }
+  input[type=file] { display: none; }
+
+  .url-row { display: flex; gap: 6px; margin-top: 10px; }
+  .url-row input {
+    flex: 1; min-width: 0; background: var(--panel2); border: 1px solid var(--line);
+    border-radius: 7px; color: var(--text); font: inherit; font-size: 12px; padding: 8px 10px; outline: none;
+  }
+  .url-row input:focus { border-color: var(--accent); }
+  .url-row button, .btn {
+    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 7px; font: inherit; font-size: 12px; padding: 8px 12px; cursor: pointer; transition: 0.15s;
+    white-space: nowrap;
+  }
+  .url-row button:hover, .btn:hover { background: #2a2a2a; border-color: var(--accent); }
+
+  /* Sliders */
+  .ctrl { margin-bottom: 15px; }
+  .ctrl:last-child { margin-bottom: 4px; }
+  .ctrl .row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 8px; }
+  .ctrl .row .name { color: var(--text); }
+  .ctrl .row .val  { color: var(--muted); font-variant-numeric: tabular-nums; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 2px;
+    background: var(--line); border-radius: 2px; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--text); cursor: pointer; border: 3px solid var(--panel);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 12px; height: 12px; border-radius: 50%; background: var(--text); cursor: pointer; border: none;
+  }
+
+  /* Toggles */
+  .toggle { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 12px; }
+  .switch { position: relative; width: 38px; height: 22px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .track {
+    position: absolute; inset: 0; background: var(--line); border-radius: 999px; transition: 0.18s; cursor: pointer;
+  }
+  .switch .track::before {
+    content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px;
+    background: #cfcfcf; border-radius: 50%; transition: 0.18s;
+  }
+  .switch input:checked + .track { background: #5a5a5a; }
+  .switch input:checked + .track::before { transform: translateX(16px); background: #fff; }
+
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .btn.primary { background: #f3f3f3; color: #111; border-color: #f3f3f3; font-weight: 600; }
+  .btn.primary:hover { background: #fff; }
+  .actions .btn { text-align: center; }
+  .hint { font-size: 10px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+  /* ---- Stage (the hero preview) ------------------------------------------
+     isolation:isolate traps the ribs' mix-blend-mode inside the stage. -------- */
+  .stage { position: relative; overflow: hidden; isolation: isolate; background: #0d0d0d; }
+  .layer { position: absolute; inset: 0; }
+
+  /* LAYER 1: raw photo (grayscale toggle via --gray) */
+  .bg {
+    z-index: 1; background: var(--bg-image) center / cover no-repeat;
+    filter: grayscale(var(--gray)) contrast(1.05);
+  }
+  /* LAYER 2: fluted-glass pane — same photo through the SVG filter */
+  .glass {
+    z-index: 2; background: var(--bg-image) center / cover no-repeat;
+    filter: grayscale(var(--gray)) contrast(1.05) url(#fluted);
+  }
+  /* LAYER 3: rib shading — CSS gradient, same period as the refraction.
+     Each reed goes SHADOW (left edge) → neutral → HIGHLIGHT (right edge), so the
+     dark crease sits on the left of every rib and the specular glint on the right. */
+  .ribs {
+    z-index: 3; pointer-events: none; mix-blend-mode: soft-light;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(0,0,0,var(--shadow-opacity))          0px,
+      rgba(0,0,0,0)                              calc(var(--rib-width) * 0.40),
+      rgba(255,255,255,0)                        calc(var(--rib-width) * 0.60),
+      rgba(255,255,255,var(--highlight-opacity)) var(--rib-width)
+    );
+  }
+  /* LAYER 4: legibility scrim (only shown with the text overlay) */
+  .scrim {
+    z-index: 4; pointer-events: none;
+    background:
+      linear-gradient(to top,   rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 45%),
+      linear-gradient(to right, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 40%);
+  }
+  /* LAYER 5: film grain — tiled monochrome feTurbulence noise, overlay-blended.
+     Sits above the glass so it grains the whole surface, but below the UI text. */
+  .grain {
+    z-index: 5; pointer-events: none;
+    opacity: var(--grain);
+    mix-blend-mode: overlay;
+    background-repeat: repeat;
+    background-size: 140px 140px;
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='140'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.85'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  /* LAYER 6: sharp UI text (toggleable) */
+  .ui { z-index: 6; }
+  .stage.no-text .scrim, .stage.no-text .ui { display: none; }
+
+  .genre {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    font-size: clamp(10px, 1.1vw, 13px); letter-spacing: 0.28em; text-transform: uppercase;
+    font-weight: 500; color: rgba(243,243,243,0.85); white-space: nowrap;
+    text-shadow: 0 1px 8px rgba(0,0,0,0.5);
+  }
+  .genre--top    { top: clamp(20px, 4vh, 40px); }
+  .genre--bottom { bottom: clamp(20px, 4vh, 40px); }
+  .title-block { position: absolute; left: clamp(20px, 5vw, 64px); bottom: clamp(96px, 18vh, 168px); max-width: min(90vw, 900px); }
+  .title { margin: 0; font-weight: 600; line-height: 0.98; letter-spacing: -0.02em; font-size: clamp(40px, 8vw, 120px); text-shadow: 0 2px 24px rgba(0,0,0,0.45); }
+  .title span { display: block; }
+  .pill {
+    display: inline-block; margin-top: clamp(14px, 2.5vh, 26px); padding: 8px 18px;
+    border: 1px solid rgba(255,255,255,0.28); border-radius: 999px; background: rgba(255,255,255,0.08);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    font-size: clamp(12px, 1.3vw, 15px); color: rgba(243,243,243,0.92);
+  }
+  .play {
+    position: absolute; left: clamp(20px, 5vw, 64px); bottom: clamp(24px, 5vh, 44px);
+    display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px 9px 16px;
+    border: 1px solid rgba(255,255,255,0.24); border-radius: 999px; background: rgba(20,20,20,0.45);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    color: #f3f3f3; font: inherit; font-size: 14px; cursor: pointer; transition: 0.2s;
+  }
+  .play:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.4); }
+  .play svg { width: 11px; height: 12px; fill: currentColor; }
+  .play kbd { font: inherit; font-size: 11px; line-height: 1; padding: 4px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.10); }
+
+  .filters { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+  /* Mobile: panel becomes a slide-in drawer */
+  .menu-btn { display: none; }
+  @media (max-width: 760px) {
+    .studio { grid-template-columns: 1fr; }
+    .panel {
+      position: fixed; inset: 0 auto 0 0; width: 300px; max-width: 88vw;
+      transform: translateX(-100%); transition: transform 0.22s ease; box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    }
+    .panel.open { transform: none; }
+    .menu-btn {
+      display: inline-flex; position: fixed; top: 14px; left: 14px; z-index: 30;
+      background: rgba(20,20,20,0.6); border: 1px solid rgba(255,255,255,0.2); color: #fff;
+      border-radius: 8px; padding: 8px 12px; font: inherit; font-size: 13px; cursor: pointer;
+      -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    }
+  }
+</style>
+</head>
+<body>
+
+  <button class="menu-btn" id="menuBtn" aria-label="Toggle controls">☰ Controls</button>
+
+  <div class="studio">
+
+    <!-- ================= CONTROLS ================= -->
+    <aside class="panel" id="panel">
+      <h1>Fractalic</h1>
+      <div class="sub">Fluted-glass effect studio</div>
+
+      <div class="group">
+        <span class="label">Image</span>
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept="image/*" />
+          <span class="ico">⊕</span>
+          <p><b>Upload</b> or drop an image here<br>PNG · JPG · WebP</p>
+        </label>
+        <div class="url-row">
+          <input type="text" id="url" placeholder="…or paste an image URL" />
+          <button id="loadUrl">Load</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <span class="label">Glass</span>
+
+        <div class="ctrl" data-var="--rib-width" data-min="8" data-max="80" data-step="1" data-unit="px">
+          <div class="row"><span class="name">Rib width</span><span class="val"></span></div>
+          <input type="range" />
+        </div>
+
+        <div class="ctrl" data-var="--refraction-strength" data-min="0" data-max="100" data-step="1" data-unit="">
+          <div class="row"><span class="name">Refraction</span><span class="val"></span></div>
+          <input type="range" />
+        </div>
+
+        <div class="ctrl" data-var="--blur" data-min="0" data-max="6" data-step="0.1" data-unit="px">
+          <div class="row"><span class="name">Frost / blur</span><span class="val"></span></div>
+          <input type="range" />
+        </div>
+
+        <div class="ctrl" data-var="--highlight-opacity" data-min="0" data-max="1" data-step="0.02" data-unit="">
+          <div class="row"><span class="name">Rib highlight</span><span class="val"></span></div>
+          <input type="range" />
+        </div>
+
+        <div class="ctrl" data-var="--shadow-opacity" data-min="0" data-max="1" data-step="0.02" data-unit="">
+          <div class="row"><span class="name">Rib shadow</span><span class="val"></span></div>
+          <input type="range" />
+        </div>
+      </div>
+
+      <div class="group">
+        <span class="label">Display</span>
+        <div class="toggle">
+          <span>Grayscale</span>
+          <label class="switch"><input type="checkbox" id="grayToggle" checked><span class="track"></span></label>
+        </div>
+        <div class="toggle">
+          <span>Show title overlay</span>
+          <label class="switch"><input type="checkbox" id="textToggle" checked><span class="track"></span></label>
+        </div>
+      </div>
+
+      <div class="group">
+        <span class="label">Grain</span>
+        <div class="ctrl" data-var="--grain" data-min="0" data-max="0.6" data-step="0.01" data-unit="">
+          <div class="row"><span class="name">Film grain</span><span class="val"></span></div>
+          <input type="range" />
+        </div>
+      </div>
+
+      <div class="group">
+        <span class="label">Output</span>
+        <div class="actions">
+          <button class="btn" id="resetBtn">Reset</button>
+          <button class="btn primary" id="downloadBtn">Download PNG</button>
+        </div>
+        <p class="hint">Export applies the glass to the whole image at full resolution (no title text). Uploaded files always export; some remote URLs block export for security — upload the file in that case.</p>
+      </div>
+    </aside>
+
+    <!-- ================= PREVIEW ================= -->
+    <main class="stage" id="stage">
+      <!-- LAYER ORDER: photo → fluted-glass → ribs → scrim → sharp UI -->
+      <div class="layer bg"></div>
+      <div class="layer glass"></div>
+      <div class="layer ribs"></div>
+      <div class="layer scrim"></div>
+      <div class="layer grain"></div>
+
+      <div class="layer ui">
+        <p class="genre genre--top">Deep House &bull; Downtempo &bull; Drum &amp; Bass &bull; Trip-Hop</p>
+        <div class="title-block">
+          <h1 class="title"><span>I Don't Need</span><span>The Light</span></h1>
+          <span class="pill">by FoldingSky</span>
+        </div>
+        <button class="play" type="button" aria-label="Play">
+          <svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 0l10 6-10 6z"/></svg>
+          Play <kbd>K</kbd>
+        </button>
+        <p class="genre genre--bottom">Deep House &bull; Downtempo &bull; Drum &amp; Bass &bull; Trip-Hop</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- ==========================================================================
+       THE GLASS FILTER
+       feImage           : striped displacement MAP, built in JS so its pixel
+                           period == --rib-width. RED = per-reed sawtooth ramp;
+                           GREEN = fixed 0.5 → no vertical displacement.
+       feGaussianBlur    : the frost.
+       feDisplacementMap : slices the frosted photo sideways, reed by reed.
+       ========================================================================== -->
+  <svg class="filters" aria-hidden="true"
+       xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <filter id="fluted" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feImage id="glass-map" result="map" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" />
+      <feGaussianBlur id="glass-blur" in="SourceGraphic" stdDeviation="1.5" result="frost" />
+      <feDisplacementMap id="glass-disp" in="frost" in2="map" scale="18" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
+
+  <script>
+    "use strict";
+    const root  = document.documentElement;
+    const stage = document.getElementById('stage');
+    const feImg  = document.getElementById('glass-map');
+    const feDisp = document.getElementById('glass-disp');
+    const feBlur = document.getElementById('glass-blur');
+    const XLINK  = 'http://www.w3.org/1999/xlink';
+    const num = (name) => parseFloat(getComputedStyle(root).getPropertyValue(name));
+
+    /* ---- SVG bridge: build a pixel-accurate map + copy strength/blur -------- */
+    function buildMap(w, h, rib) {
+      const svg =
+        "<svg xmlns='http://www.w3.org/2000/svg' width='" + w + "' height='" + h +
+        "' viewBox='0 0 " + w + " " + h + "'><defs>" +
+          "<linearGradient id='ramp' x1='0' y1='0' x2='1' y2='0'>" +
+            "<stop offset='0' stop-color='rgb(0,128,128)'/>" +
+            "<stop offset='1' stop-color='rgb(255,128,128)'/>" +
+          "</linearGradient>" +
+          "<pattern id='reeds' width='" + rib + "' height='" + h + "' patternUnits='userSpaceOnUse'>" +
+            "<rect width='" + rib + "' height='" + h + "' fill='url(#ramp)'/>" +
+          "</pattern></defs>" +
+          "<rect width='" + w + "' height='" + h + "' fill='url(#reeds)'/></svg>";
+      return 'data:image/svg+xml,' + encodeURIComponent(svg);
+    }
+    function syncGlass() {
+      const rib = num('--rib-width') || 28;
+      const w = Math.max(1, Math.ceil(stage.clientWidth  || window.innerWidth));
+      const h = Math.max(1, Math.ceil(stage.clientHeight || window.innerHeight));
+      const uri = buildMap(w, h, rib);
+      feImg.setAttribute('href', uri);
+      feImg.setAttributeNS(XLINK, 'href', uri);
+      feDisp.setAttribute('scale', num('--refraction-strength') || 0);
+      feBlur.setAttribute('stdDeviation', num('--blur') || 0);
+    }
+    window.syncGlass = syncGlass;
+    window.addEventListener('resize', syncGlass, { passive: true });
+    // Re-run once layout is settled so the very first map isn't built at 0-size.
+    window.addEventListener('load', syncGlass);
+    requestAnimationFrame(syncGlass);
+
+    /* ---- Wire up sliders to the custom properties -------------------------- */
+    document.querySelectorAll('.ctrl').forEach(ctrl => {
+      const varName = ctrl.dataset.var, unit = ctrl.dataset.unit;
+      const input = ctrl.querySelector('input');
+      const valEl = ctrl.querySelector('.val');
+      input.min = ctrl.dataset.min; input.max = ctrl.dataset.max; input.step = ctrl.dataset.step;
+      const start = num(varName);
+      input.value = start;
+      const show = v => valEl.textContent = (unit === 'px' ? v + 'px' : v);
+      show(start);
+      input.addEventListener('input', () => {
+        root.style.setProperty(varName, input.value + unit);
+        show(input.value);
+        syncGlass();
+      });
+    });
+
+    /* ---- Toggles ----------------------------------------------------------- */
+    const grayToggle = document.getElementById('grayToggle');
+    const textToggle = document.getElementById('textToggle');
+    grayToggle.addEventListener('change', () => root.style.setProperty('--gray', grayToggle.checked ? '1' : '0'));
+    textToggle.addEventListener('change', () => stage.classList.toggle('no-text', !textToggle.checked));
+
+    /* ---- Tiny non-blocking toast (never use alert — it freezes previews) --- */
+    let toastEl;
+    function toast(msg) {
+      if (!toastEl) {
+        toastEl = document.createElement('div');
+        toastEl.style.cssText = 'position:fixed;left:50%;bottom:22px;transform:translateX(-50%);' +
+          'background:rgba(20,20,20,.9);color:#fff;border:1px solid rgba(255,255,255,.2);' +
+          'padding:9px 16px;border-radius:10px;font-size:12px;z-index:999;pointer-events:none;' +
+          'backdrop-filter:blur(6px);transition:opacity .3s;max-width:80vw;text-align:center;';
+        document.body.appendChild(toastEl);
+      }
+      toastEl.textContent = msg;
+      toastEl.style.opacity = '1';
+      clearTimeout(toastEl._t);
+      toastEl._t = setTimeout(() => { toastEl.style.opacity = '0'; }, 2600);
+    }
+
+    /* ---- Image loading ----------------------------------------------------
+       `exportable` tracks whether the current image can be rasterised without
+       tainting the canvas: data-URL uploads always can; remote URLs only if we
+       managed to load them with CORS. -------------------------------------- */
+    let sourceImg = null, exportable = false;
+    function apply(img, src, canExport) {
+      sourceImg = img; exportable = canExport;
+      root.style.setProperty('--bg-image', 'url("' + src + '")');
+    }
+    function setImage(src, remote) {
+      const isData = src.slice(0, 5) === 'data:';
+      const img = new Image();
+      if (remote && !isData) img.crossOrigin = 'anonymous';
+      img.onload = () => apply(img, src, isData || !remote || img.crossOrigin === 'anonymous');
+      img.onerror = () => {
+        if (remote && !isData) {
+          // CORS attempt failed — reload without it so it still DISPLAYS (export off)
+          const plain = new Image();
+          plain.onload = () => { apply(plain, src, false); toast('Loaded for preview — this URL blocks PNG export.'); };
+          plain.onerror = () => toast('Could not load that image.');
+          plain.src = src;
+        } else {
+          toast('Could not load that image.');
+        }
+      };
+      img.src = src;
+    }
+    // seed with the default sample
+    setImage('https://picsum.photos/id/1074/1600/1200', true);
+
+    const fileInput = document.getElementById('file');
+    fileInput.addEventListener('change', e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = () => setImage(r.result, false);  // data URL → never taints canvas
+      r.readAsDataURL(f);
+    });
+    document.getElementById('loadUrl').addEventListener('click', () => {
+      const u = document.getElementById('url').value.trim();
+      if (u) setImage(u, true);
+    });
+
+    // drag & drop (panel drop zone + anywhere on the stage)
+    const drop = document.getElementById('drop');
+    function readDropped(e) {
+      const f = e.dataTransfer.files[0];
+      if (f && f.type.startsWith('image/')) {
+        const r = new FileReader();
+        r.onload = () => setImage(r.result, false);
+        r.readAsDataURL(f);
+      }
+    }
+    ['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
+    ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
+    drop.addEventListener('drop', readDropped);
+    stage.addEventListener('dragover', e => e.preventDefault());
+    stage.addEventListener('drop', e => { e.preventDefault(); readDropped(e); });
+
+    /* ---- Reset ------------------------------------------------------------- */
+    const DEFAULTS = { '--rib-width':'28px', '--refraction-strength':'18', '--blur':'1.5px', '--highlight-opacity':'0.5', '--shadow-opacity':'0.35', '--grain':'0.12' };
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      for (const k in DEFAULTS) root.style.setProperty(k, DEFAULTS[k]);
+      document.querySelectorAll('.ctrl').forEach(ctrl => {
+        const input = ctrl.querySelector('input'), unit = ctrl.dataset.unit;
+        input.value = num(ctrl.dataset.var);
+        ctrl.querySelector('.val').textContent = (unit === 'px' ? input.value + 'px' : input.value);
+      });
+      syncGlass();
+    });
+
+    /* ---- Export -----------------------------------------------------------
+       A standalone canvas re-render of the same pipeline so it can rasterise to
+       PNG: grayscale+blur (pre-displace) → per-reed sawtooth displacement →
+       soft-light rib overlay. Effect params are scaled from screen px to output
+       px so the export looks like a high-res version of the preview. ---------- */
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      if (!sourceImg) { toast('Load an image first.'); return; }
+      if (!exportable) { toast('This image can’t be exported (cross-origin). Upload the file to enable download.'); return; }
+      const stageW = stage.clientWidth || window.innerWidth;
+
+      let W = sourceImg.naturalWidth, H = sourceImg.naturalHeight;
+      const CAP = 2600;
+      if (W > CAP) { H = Math.round(H * CAP / W); W = CAP; }
+
+      const sf       = W / stageW;                       // screen-px → output-px
+      const rib      = Math.max(1, num('--rib-width') * sf);
+      const strength = num('--refraction-strength') * sf;
+      const blur     = num('--blur') * sf;
+      const hi       = num('--highlight-opacity');
+      const sh       = num('--shadow-opacity');
+      const grain    = num('--grain');
+      const gray     = grayToggle.checked;
+
+      // 1) frosted source (grayscale + contrast + blur, all BEFORE displacement)
+      const src = document.createElement('canvas'); src.width = W; src.height = H;
+      const s = src.getContext('2d');
+      s.filter = (gray ? 'grayscale(1) ' : '') + 'contrast(1.05) blur(' + blur + 'px)';
+      s.drawImage(sourceImg, 0, 0, W, H);
+
+      // 2) sawtooth horizontal displacement, one 1px column at a time
+      const out = document.createElement('canvas'); out.width = W; out.height = H;
+      const o = out.getContext('2d');
+      for (let x = 0; x < W; x++) {
+        const ramp = (x % rib) / rib;            // 0 → 1 across each reed
+        const disp = strength * (ramp - 0.5);    // matches feDisplacementMap
+        o.drawImage(src, x + disp, 0, 1, H, x, 0, 1, H);
+      }
+
+      // 3) rib shading, soft-light — a repeating gradient tile one reed wide
+      const tileW = Math.max(2, Math.round(rib));
+      const tile = document.createElement('canvas'); tile.width = tileW; tile.height = 1;
+      const t = tile.getContext('2d');
+      const g = t.createLinearGradient(0, 0, tileW, 0);
+      g.addColorStop(0.00, 'rgba(0,0,0,' + sh + ')');       // shadow → left of reed
+      g.addColorStop(0.40, 'rgba(0,0,0,0)');
+      g.addColorStop(0.60, 'rgba(255,255,255,0)');
+      g.addColorStop(1.00, 'rgba(255,255,255,' + hi + ')'); // highlight → right of reed
+      t.fillStyle = g; t.fillRect(0, 0, tileW, 1);
+      o.globalCompositeOperation = 'soft-light';
+      o.fillStyle = o.createPattern(tile, 'repeat');
+      o.fillRect(0, 0, W, H);
+      o.globalCompositeOperation = 'source-over';
+
+      // 4) film grain — monochrome noise, overlay-blended at the grain opacity
+      if (grain > 0) {
+        const gn = document.createElement('canvas'); gn.width = W; gn.height = H;
+        const gc = gn.getContext('2d');
+        const id = gc.createImageData(W, H), d = id.data;
+        for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255; d[i] = d[i+1] = d[i+2] = v; d[i+3] = 255; }
+        gc.putImageData(id, 0, 0);
+        o.globalAlpha = grain;
+        o.globalCompositeOperation = 'overlay';
+        o.drawImage(gn, 0, 0);
+        o.globalAlpha = 1;
+        o.globalCompositeOperation = 'source-over';
+      }
+
+      out.toBlob(b => {
+        if (!b) { toast('Export blocked (cross-origin image). Upload the file instead.'); return; }
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(b);
+        a.download = 'fluted-glass.png';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      }, 'image/png');
+    });
+
+    /* ---- Mobile drawer + shortcut ----------------------------------------- */
+    document.getElementById('menuBtn').addEventListener('click', () =>
+      document.getElementById('panel').classList.toggle('open'));
+    window.addEventListener('keydown', e => {
+      if (e.key.toLowerCase() === 'k' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName))
+        document.querySelector('.play').classList.toggle('is-playing');
+    });
+
+    syncGlass();
+  </script>
+</body>
+</html>
