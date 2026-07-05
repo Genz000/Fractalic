@@ -185,7 +185,7 @@
   .field-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 500; color: var(--foreground); margin-bottom: 8px; }
   .field-val { color: var(--muted-foreground); font-variant-numeric: tabular-nums; font-weight: 400; }
 
-  .segmented { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; padding: 4px; background: var(--muted); border-radius: var(--radius); }
+  .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; background: var(--muted); border-radius: var(--radius); }
   .segmented button {
     height: 30px; border: none; border-radius: calc(var(--radius) - 3px); background: transparent;
     color: var(--muted-foreground); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: .15s;
@@ -425,6 +425,14 @@
             <option value="0.75">Portrait · 3:4</option>
             <option value="0.5625">Portrait · 9:16</option>
           </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Fit</label>
+          <div class="segmented" id="fitSeg">
+            <button type="button" data-fit="cover" class="active">Crop to fill</button>
+            <button type="button" data-fit="contain">Fit (letterbox)</button>
+          </div>
         </div>
 
         <div class="field">
@@ -688,6 +696,7 @@
     /* ---- Export dialog (format / dimensions / ratio) ----------------------- */
     const overlay      = document.getElementById('exportOverlay');
     const fmtSeg       = document.getElementById('fmtSeg');
+    const fitSeg       = document.getElementById('fitSeg');
     const qualityField = document.getElementById('qualityField');
     const qualityRange = document.getElementById('qualityRange');
     const qualityVal   = document.getElementById('qualityVal');
@@ -696,7 +705,7 @@
     const dimH         = document.getElementById('dimH');
     const lockBtn      = document.getElementById('lockBtn');
 
-    const exp = { format: 'png', srcW: 0, srcH: 0, aspect: 1, lock: true };
+    const exp = { format: 'png', fit: 'cover', srcW: 0, srcH: 0, aspect: 1, lock: true };
 
     const paintQuality = () => {
       qualityRange.style.setProperty('--_p',
@@ -711,6 +720,8 @@
       let W = sourceImg.naturalWidth, H = sourceImg.naturalHeight;
       const CAP = 2600; if (W > CAP) { H = Math.round(H * CAP / W); W = CAP; }
       exp.srcW = W; exp.srcH = H; exp.aspect = W / H; exp.lock = true;
+      exp.fit = 'cover';
+      [...fitSeg.children].forEach(x => x.classList.toggle('active', x.dataset.fit === 'cover'));
       lockBtn.setAttribute('aria-pressed', 'true');
       ratioSel.value = 'original';
       dimW.value = W; dimH.value = H;
@@ -733,6 +744,12 @@
     });
     qualityRange.addEventListener('input', paintQuality);
 
+    fitSeg.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      [...fitSeg.children].forEach(x => x.classList.toggle('active', x === b));
+      exp.fit = b.dataset.fit;
+    });
+
     ratioSel.addEventListener('change', () => {
       exp.aspect = ratioSel.value === 'original' ? exp.srcW / exp.srcH : parseFloat(ratioSel.value);
       exp.lock = true; lockBtn.setAttribute('aria-pressed', 'true');
@@ -750,11 +767,17 @@
       const H = Math.max(1, Math.min(8000, Math.round(+dimH.value || exp.srcH)));
       const effect = renderEffect();
 
-      // scale/crop the effect into the chosen dimensions (cover, centred)
+      // scale the effect into the chosen dimensions, centred.
+      //   cover   → fill the frame, crop the overflow (Math.max)
+      //   contain → fit the whole image, letterbox the remainder (Math.min)
       const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
       const c = cv.getContext('2d');
-      if (exp.format !== 'png') { c.fillStyle = '#000'; c.fillRect(0, 0, W, H); } // opaque bg for JPEG
-      const scale = Math.max(W / effect.width, H / effect.height);
+      // JPEG has no alpha, so letterbox bars must be a solid colour; PNG/WebP keep
+      // transparent padding.
+      if (exp.format === 'jpeg') { c.fillStyle = '#000'; c.fillRect(0, 0, W, H); }
+      const scale = exp.fit === 'contain'
+        ? Math.min(W / effect.width, H / effect.height)
+        : Math.max(W / effect.width, H / effect.height);
       const dw = effect.width * scale, dh = effect.height * scale;
       c.imageSmoothingQuality = 'high';
       c.drawImage(effect, (W - dw) / 2, (H - dh) / 2, dw, dh);
@@ -777,7 +800,7 @@
       document.getElementById('panel').classList.toggle('open'));
 
     /* ---- Build version (console only) -------------------------------------- */
-    const VERSION = '2026-07-05.4';
+    const VERSION = '2026-07-05.5';
     console.log('%cFractalic build ' + VERSION, 'color:#8f8f8f');
 
     syncGlass();
