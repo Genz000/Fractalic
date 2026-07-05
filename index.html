@@ -129,6 +129,7 @@
   .btn.primary:hover { background: #fff; }
   .actions .btn { text-align: center; }
   .hint { font-size: 10px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+  .build { margin-top: 18px; font-size: 10px; color: #555; letter-spacing: 0.04em; }
 
   /* ---- Stage (the hero preview) ------------------------------------------
      isolation:isolate traps the ribs' mix-blend-mode inside the stage. -------- */
@@ -277,6 +278,8 @@
         </div>
         <p class="hint">Export applies the effect to the whole image at full resolution. Uploaded files always export; some remote URLs block export for security — upload the file in that case.</p>
       </div>
+
+      <div class="build" id="build"></div>
     </aside>
 
     <!-- ================= PREVIEW ================= -->
@@ -554,6 +557,11 @@
     /* ---- Mobile drawer ----------------------------------------------------- */
     document.getElementById('menuBtn').addEventListener('click', () =>
       document.getElementById('panel').classList.toggle('open'));
+
+    /* ---- Build stamp (so you can tell which version is loaded) -------------- */
+    const VERSION = '2026-07-05.1';
+    document.getElementById('build').textContent = 'build ' + VERSION;
+    console.log('%cFractalic build ' + VERSION, 'color:#8f8f8f');
 
     syncGlass();
   </script>
