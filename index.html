@@ -97,16 +97,7 @@
   .drop b { color: var(--foreground); font-weight: 600; }
   input[type=file] { display: none; }
 
-  /* Input + buttons (shadcn) */
-  .url-row { display: flex; gap: 8px; margin-top: 10px; }
-  .url-row input {
-    flex: 1; min-width: 0; height: 36px; background: transparent; border: 1px solid var(--border);
-    border-radius: var(--radius); color: var(--foreground); font: inherit; font-size: 13px; padding: 0 11px; outline: none;
-    transition: border-color .15s, box-shadow .15s;
-  }
-  .url-row input::placeholder { color: var(--muted-foreground); }
-  .url-row input:focus-visible { border-color: var(--ring); box-shadow: 0 0 0 3px var(--ring-soft); }
-
+  /* Buttons (shadcn) */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     height: 36px; padding: 0 14px; border-radius: var(--radius);
@@ -257,10 +248,6 @@
           <span class="ico">⊕</span>
           <p><b>Upload</b> or drop an image here<br>PNG · JPG · WebP</p>
         </label>
-        <div class="url-row">
-          <input type="text" id="url" placeholder="…or paste an image URL" />
-          <button class="btn" id="loadUrl">Load</button>
-        </div>
       </div>
 
       <div class="group">
@@ -318,7 +305,7 @@
           <button class="btn" id="resetBtn">Reset</button>
           <button class="btn primary" id="downloadBtn">Download PNG</button>
         </div>
-        <p class="hint">Export applies the effect to the whole image at full resolution. Uploaded files always export; some remote URLs block export for security — upload the file in that case.</p>
+        <p class="hint">Export applies the effect to the whole image at full resolution.</p>
       </div>
 
       <div class="build" id="build"></div>
@@ -484,11 +471,6 @@
     fileInput.addEventListener('click', () => { fileInput.value = ''; });
     fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
 
-    document.getElementById('loadUrl').addEventListener('click', () => {
-      const u = document.getElementById('url').value.trim();
-      if (u) setImage(u, true);
-    });
-
     // drag & drop (panel drop zone + anywhere on the stage)
     const drop = document.getElementById('drop');
     function readDropped(e) { loadFile(e.dataTransfer.files[0]); }
@@ -604,7 +586,7 @@
       document.getElementById('panel').classList.toggle('open'));
 
     /* ---- Build stamp (so you can tell which version is loaded) -------------- */
-    const VERSION = '2026-07-05.2';
+    const VERSION = '2026-07-05.3';
     document.getElementById('build').textContent = 'build ' + VERSION;
     console.log('%cFractalic build ' + VERSION, 'color:#8f8f8f');
 
