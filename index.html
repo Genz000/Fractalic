@@ -150,9 +150,71 @@
   .switch input:checked + .track::before { transform: translateX(18px); background: var(--primary-foreground); }
   .switch input:focus-visible + .track { box-shadow: 0 0 0 3px var(--ring-soft); }
 
-  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
-  .hint { font-size: 12px; color: var(--muted-foreground); margin-top: 12px; line-height: 1.5; }
-  .build { margin-top: 20px; font-size: 11px; color: var(--muted-foreground); opacity: 0.6; letter-spacing: 0.02em; }
+  /* Header icon actions (Reset / Export) */
+  .brand-text { min-width: 0; }
+  .brand-text h1 { white-space: nowrap; }
+  .top-actions { margin-left: auto; display: flex; gap: 6px; }
+  .icon-btn {
+    width: 34px; height: 34px; flex: none; display: grid; place-items: center;
+    border-radius: calc(var(--radius) - 2px); border: 1px solid var(--border);
+    background: transparent; color: var(--foreground); cursor: pointer;
+    transition: background .15s, border-color .15s, box-shadow .15s, opacity .15s;
+  }
+  .icon-btn svg { width: 16px; height: 16px; }
+  .icon-btn:hover { background: var(--accent); }
+  .icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring-soft); }
+  .icon-btn.primary { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+  .icon-btn.primary:hover { opacity: 0.9; }
+
+  /* ---- Export dialog (shadcn) -------------------------------------------- */
+  .dlg-overlay {
+    position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px;
+    background: rgba(0,0,0,0.6); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  }
+  .dlg-overlay[hidden] { display: none; }
+  .dlg {
+    width: 100%; max-width: 400px; background: var(--card); color: var(--foreground);
+    border: 1px solid var(--border); border-radius: calc(var(--radius) + 3px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.55); overflow: hidden; animation: dlgIn .16s ease-out;
+  }
+  @keyframes dlgIn { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+  .dlg-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 18px 6px; }
+  .dlg-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .dlg-desc { margin: 3px 0 0; font-size: 12px; color: var(--muted-foreground); }
+  .dlg-body { padding: 12px 18px 4px; display: flex; flex-direction: column; gap: 16px; }
+  .field-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 500; color: var(--foreground); margin-bottom: 8px; }
+  .field-val { color: var(--muted-foreground); font-variant-numeric: tabular-nums; font-weight: 400; }
+
+  .segmented { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; padding: 4px; background: var(--muted); border-radius: var(--radius); }
+  .segmented button {
+    height: 30px; border: none; border-radius: calc(var(--radius) - 3px); background: transparent;
+    color: var(--muted-foreground); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: .15s;
+  }
+  .segmented button:hover { color: var(--foreground); }
+  .segmented button.active { background: var(--card); color: var(--foreground); box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+
+  .dlg-select {
+    width: 100%; height: 36px; padding: 0 32px 0 11px; border-radius: var(--radius);
+    background-color: transparent; border: 1px solid var(--border); color: var(--foreground);
+    font: inherit; font-size: 13px; outline: none; cursor: pointer; appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .dlg-select:focus-visible { border-color: var(--ring); box-shadow: 0 0 0 3px var(--ring-soft); }
+  .dlg-select option { background: var(--card); color: var(--foreground); }
+
+  .dim-row { display: flex; align-items: center; gap: 8px; }
+  .dim-row input[type=number] {
+    flex: 1; min-width: 0; height: 36px; padding: 0 11px; border-radius: var(--radius);
+    background: transparent; border: 1px solid var(--border); color: var(--foreground);
+    font: inherit; font-size: 13px; outline: none; -moz-appearance: textfield;
+  }
+  .dim-row input::-webkit-outer-spin-button, .dim-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .dim-row input:focus-visible { border-color: var(--ring); box-shadow: 0 0 0 3px var(--ring-soft); }
+  .dim-x { color: var(--muted-foreground); font-size: 13px; }
+  .icon-btn.lock[aria-pressed="true"] { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+
+  .dlg-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 18px 18px; }
 
   /* ---- Stage (the hero preview) ------------------------------------------
      isolation:isolate traps the ribs' mix-blend-mode inside the stage. -------- */
@@ -235,9 +297,21 @@
             <path d="M6 4v16M10 4v16M14 4v16M18 4v16"/>
           </svg>
         </span>
-        <div>
+        <div class="brand-text">
           <h1>Fractalic</h1>
           <div class="sub">Fluted-glass studio</div>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn" id="resetBtn" type="button" title="Reset settings" aria-label="Reset settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>
+            </svg>
+          </button>
+          <button class="icon-btn primary" id="downloadBtn" type="button" title="Export image" aria-label="Export image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -293,22 +367,11 @@
 
       <div class="group">
         <span class="label">Grain</span>
-        <div class="ctrl" data-var="--grain" data-min="0" data-max="0.6" data-step="0.01" data-unit="">
+        <div class="ctrl" data-var="--grain" data-min="0" data-max="1" data-step="0.01" data-unit="">
           <div class="row"><span class="name">Film grain</span><span class="val"></span></div>
           <input type="range" />
         </div>
       </div>
-
-      <div class="group">
-        <span class="label">Output</span>
-        <div class="actions">
-          <button class="btn" id="resetBtn">Reset</button>
-          <button class="btn primary" id="downloadBtn">Download PNG</button>
-        </div>
-        <p class="hint">Export applies the effect to the whole image at full resolution.</p>
-      </div>
-
-      <div class="build" id="build"></div>
     </aside>
 
     <!-- ================= PREVIEW ================= -->
@@ -320,6 +383,68 @@
       <div class="layer grain"></div>
       <div class="layer vignette"></div>
     </main>
+  </div>
+
+  <!-- ================= EXPORT DIALOG ================= -->
+  <div class="dlg-overlay" id="exportOverlay" hidden>
+    <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+      <div class="dlg-head">
+        <div>
+          <h2 id="dlgTitle">Export image</h2>
+          <p class="dlg-desc">Choose a format and size, then download.</p>
+        </div>
+        <button class="icon-btn" id="dlgClose" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="dlg-body">
+        <div class="field">
+          <label class="field-label">Format</label>
+          <div class="segmented" id="fmtSeg">
+            <button type="button" data-fmt="png"  class="active">PNG</button>
+            <button type="button" data-fmt="jpeg">JPEG</button>
+            <button type="button" data-fmt="webp">WebP</button>
+          </div>
+        </div>
+
+        <div class="field" id="qualityField" hidden>
+          <label class="field-label">Quality <span class="field-val" id="qualityVal">92%</span></label>
+          <input type="range" id="qualityRange" min="10" max="100" step="1" value="92" />
+        </div>
+
+        <div class="field">
+          <label class="field-label">Aspect ratio</label>
+          <select id="ratioSel" class="dlg-select">
+            <option value="original">Original</option>
+            <option value="1">Square · 1:1</option>
+            <option value="1.7778">Landscape · 16:9</option>
+            <option value="1.5">Landscape · 3:2</option>
+            <option value="1.3333">Landscape · 4:3</option>
+            <option value="0.8">Portrait · 4:5</option>
+            <option value="0.75">Portrait · 3:4</option>
+            <option value="0.5625">Portrait · 9:16</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Dimensions (px)</label>
+          <div class="dim-row">
+            <input type="number" id="dimW" min="1" max="8000" />
+            <span class="dim-x">×</span>
+            <input type="number" id="dimH" min="1" max="8000" />
+            <button type="button" class="icon-btn lock" id="lockBtn" title="Lock aspect ratio" aria-pressed="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="dlg-foot">
+        <button class="btn" id="dlgCancel" type="button">Cancel</button>
+        <button class="btn primary" id="dlgExport" type="button">Download</button>
+      </div>
+    </div>
   </div>
 
   <!-- ==========================================================================
@@ -493,16 +618,13 @@
       syncGlass();
     });
 
-    /* ---- Export -----------------------------------------------------------
-       A standalone canvas re-render of the same pipeline so it can rasterise to
-       PNG: grayscale+blur (pre-displace) → per-reed sawtooth displacement →
-       soft-light rib overlay. Effect params are scaled from screen px to output
-       px so the export looks like a high-res version of the preview. ---------- */
-    document.getElementById('downloadBtn').addEventListener('click', () => {
-      if (!sourceImg) { toast('Load an image first.'); return; }
-      if (!exportable) { toast('This image can’t be exported (cross-origin). Upload the file to enable download.'); return; }
+    /* ---- Export pipeline --------------------------------------------------
+       renderEffect() rebuilds the whole effect on a canvas at the source
+       resolution (capped): grayscale+blur → per-reed sawtooth displacement →
+       soft-light ribs → grain → vignette. The dialog then scales/crops it to
+       the chosen dimensions and encodes it in the chosen format. ------------- */
+    function renderEffect() {
       const stageW = stage.clientWidth || window.innerWidth;
-
       let W = sourceImg.naturalWidth, H = sourceImg.naturalHeight;
       const CAP = 2600;
       if (W > CAP) { H = Math.round(H * CAP / W); W = CAP; }
@@ -511,83 +633,151 @@
       const rib      = Math.max(1, num('--rib-width') * sf);
       const strength = num('--refraction-strength') * sf;
       const blur     = num('--blur') * sf;
-      const hi       = num('--highlight-opacity');
-      const sh       = num('--shadow-opacity');
-      const grain    = num('--grain');
-      const vign     = num('--vignette');
-      const gray     = grayToggle.checked;
+      const hi = num('--highlight-opacity'), sh = num('--shadow-opacity');
+      const grain = num('--grain'), vign = num('--vignette');
+      const gray = grayToggle.checked;
 
-      // 1) frosted source (grayscale + contrast + blur, all BEFORE displacement)
       const src = document.createElement('canvas'); src.width = W; src.height = H;
       const s = src.getContext('2d');
       s.filter = (gray ? 'grayscale(1) ' : '') + 'contrast(1.05) blur(' + blur + 'px)';
       s.drawImage(sourceImg, 0, 0, W, H);
 
-      // 2) sawtooth horizontal displacement, one 1px column at a time
       const out = document.createElement('canvas'); out.width = W; out.height = H;
       const o = out.getContext('2d');
       for (let x = 0; x < W; x++) {
-        const ramp = (x % rib) / rib;            // 0 → 1 across each reed
-        const disp = strength * (ramp - 0.5);    // matches feDisplacementMap
+        const ramp = (x % rib) / rib;
+        const disp = strength * (ramp - 0.5);
         o.drawImage(src, x + disp, 0, 1, H, x, 0, 1, H);
       }
 
-      // 3) rib shading, soft-light — a repeating gradient tile one reed wide
       const tileW = Math.max(2, Math.round(rib));
       const tile = document.createElement('canvas'); tile.width = tileW; tile.height = 1;
       const t = tile.getContext('2d');
       const g = t.createLinearGradient(0, 0, tileW, 0);
-      g.addColorStop(0.00, 'rgba(0,0,0,' + sh + ')');       // shadow → left of reed
+      g.addColorStop(0.00, 'rgba(0,0,0,' + sh + ')');
       g.addColorStop(0.40, 'rgba(0,0,0,0)');
       g.addColorStop(0.60, 'rgba(255,255,255,0)');
-      g.addColorStop(1.00, 'rgba(255,255,255,' + hi + ')'); // highlight → right of reed
+      g.addColorStop(1.00, 'rgba(255,255,255,' + hi + ')');
       t.fillStyle = g; t.fillRect(0, 0, tileW, 1);
       o.globalCompositeOperation = 'soft-light';
       o.fillStyle = o.createPattern(tile, 'repeat');
       o.fillRect(0, 0, W, H);
       o.globalCompositeOperation = 'source-over';
 
-      // 4) film grain — monochrome noise, overlay-blended at the grain opacity
       if (grain > 0) {
         const gn = document.createElement('canvas'); gn.width = W; gn.height = H;
         const gc = gn.getContext('2d');
         const id = gc.createImageData(W, H), d = id.data;
         for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255; d[i] = d[i+1] = d[i+2] = v; d[i+3] = 255; }
         gc.putImageData(id, 0, 0);
-        o.globalAlpha = grain;
-        o.globalCompositeOperation = 'overlay';
+        o.globalAlpha = grain; o.globalCompositeOperation = 'overlay';
         o.drawImage(gn, 0, 0);
-        o.globalAlpha = 1;
-        o.globalCompositeOperation = 'source-over';
+        o.globalAlpha = 1; o.globalCompositeOperation = 'source-over';
       }
 
-      // 5) vignette — radial edge darkening (circular approx of the CSS ellipse)
       if (vign > 0) {
         const cx = W / 2, cy = H / 2;
         const rg = o.createRadialGradient(cx, cy, Math.min(W, H) * 0.30, cx, cy, Math.hypot(W, H) * 0.62);
         rg.addColorStop(0, 'rgba(0,0,0,0)');
         rg.addColorStop(1, 'rgba(0,0,0,' + vign + ')');
-        o.fillStyle = rg;
-        o.fillRect(0, 0, W, H);
+        o.fillStyle = rg; o.fillRect(0, 0, W, H);
       }
+      return out;
+    }
 
-      out.toBlob(b => {
-        if (!b) { toast('Export blocked (cross-origin image). Upload the file instead.'); return; }
+    /* ---- Export dialog (format / dimensions / ratio) ----------------------- */
+    const overlay      = document.getElementById('exportOverlay');
+    const fmtSeg       = document.getElementById('fmtSeg');
+    const qualityField = document.getElementById('qualityField');
+    const qualityRange = document.getElementById('qualityRange');
+    const qualityVal   = document.getElementById('qualityVal');
+    const ratioSel     = document.getElementById('ratioSel');
+    const dimW         = document.getElementById('dimW');
+    const dimH         = document.getElementById('dimH');
+    const lockBtn      = document.getElementById('lockBtn');
+
+    const exp = { format: 'png', srcW: 0, srcH: 0, aspect: 1, lock: true };
+
+    const paintQuality = () => {
+      qualityRange.style.setProperty('--_p',
+        ((qualityRange.value - qualityRange.min) / (qualityRange.max - qualityRange.min) * 100) + '%');
+      qualityVal.textContent = qualityRange.value + '%';
+    };
+    const updateQualityVisibility = () => { qualityField.hidden = (exp.format === 'png'); };
+
+    function openExport() {
+      if (!sourceImg) { toast('Load an image first.'); return; }
+      if (!exportable) { toast('This image can’t be exported (cross-origin). Upload a file to enable download.'); return; }
+      let W = sourceImg.naturalWidth, H = sourceImg.naturalHeight;
+      const CAP = 2600; if (W > CAP) { H = Math.round(H * CAP / W); W = CAP; }
+      exp.srcW = W; exp.srcH = H; exp.aspect = W / H; exp.lock = true;
+      lockBtn.setAttribute('aria-pressed', 'true');
+      ratioSel.value = 'original';
+      dimW.value = W; dimH.value = H;
+      paintQuality(); updateQualityVisibility();
+      overlay.hidden = false;
+    }
+    const closeExport = () => { overlay.hidden = true; };
+
+    document.getElementById('downloadBtn').addEventListener('click', openExport);
+    document.getElementById('dlgClose').addEventListener('click', closeExport);
+    document.getElementById('dlgCancel').addEventListener('click', closeExport);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeExport(); });
+    window.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) closeExport(); });
+
+    fmtSeg.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      [...fmtSeg.children].forEach(x => x.classList.toggle('active', x === b));
+      exp.format = b.dataset.fmt;
+      updateQualityVisibility();
+    });
+    qualityRange.addEventListener('input', paintQuality);
+
+    ratioSel.addEventListener('change', () => {
+      exp.aspect = ratioSel.value === 'original' ? exp.srcW / exp.srcH : parseFloat(ratioSel.value);
+      exp.lock = true; lockBtn.setAttribute('aria-pressed', 'true');
+      dimH.value = Math.max(1, Math.round((+dimW.value || 1) / exp.aspect));
+    });
+    lockBtn.addEventListener('click', () => {
+      exp.lock = lockBtn.getAttribute('aria-pressed') !== 'true';
+      lockBtn.setAttribute('aria-pressed', String(exp.lock));
+    });
+    dimW.addEventListener('input', () => { if (exp.lock) dimH.value = Math.max(1, Math.round((+dimW.value || 1) / exp.aspect)); });
+    dimH.addEventListener('input', () => { if (exp.lock) dimW.value = Math.max(1, Math.round((+dimH.value || 1) * exp.aspect)); });
+
+    document.getElementById('dlgExport').addEventListener('click', () => {
+      const W = Math.max(1, Math.min(8000, Math.round(+dimW.value || exp.srcW)));
+      const H = Math.max(1, Math.min(8000, Math.round(+dimH.value || exp.srcH)));
+      const effect = renderEffect();
+
+      // scale/crop the effect into the chosen dimensions (cover, centred)
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      const c = cv.getContext('2d');
+      if (exp.format !== 'png') { c.fillStyle = '#000'; c.fillRect(0, 0, W, H); } // opaque bg for JPEG
+      const scale = Math.max(W / effect.width, H / effect.height);
+      const dw = effect.width * scale, dh = effect.height * scale;
+      c.imageSmoothingQuality = 'high';
+      c.drawImage(effect, (W - dw) / 2, (H - dh) / 2, dw, dh);
+
+      const mime = exp.format === 'jpeg' ? 'image/jpeg' : exp.format === 'webp' ? 'image/webp' : 'image/png';
+      const q = (+qualityRange.value) / 100;
+      cv.toBlob(b => {
+        if (!b) { toast('Export failed — try PNG or a smaller size.'); return; }
         const a = document.createElement('a');
         a.href = URL.createObjectURL(b);
-        a.download = 'fluted-glass.png';
+        a.download = 'fractalic.' + (exp.format === 'jpeg' ? 'jpg' : exp.format);
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      }, 'image/png');
+        closeExport();
+      }, mime, q);
     });
 
     /* ---- Mobile drawer ----------------------------------------------------- */
     document.getElementById('menuBtn').addEventListener('click', () =>
       document.getElementById('panel').classList.toggle('open'));
 
-    /* ---- Build stamp (so you can tell which version is loaded) -------------- */
-    const VERSION = '2026-07-05.3';
-    document.getElementById('build').textContent = 'build ' + VERSION;
+    /* ---- Build version (console only) -------------------------------------- */
+    const VERSION = '2026-07-05.4';
     console.log('%cFractalic build ' + VERSION, 'color:#8f8f8f');
 
     syncGlass();
