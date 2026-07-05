@@ -150,10 +150,21 @@
   .switch input:checked + .track::before { transform: translateX(18px); background: var(--primary-foreground); }
   .switch input:focus-visible + .track { box-shadow: 0 0 0 3px var(--ring-soft); }
 
-  /* Header icon actions (Reset / Export) */
+  /* Brand + section tweaks */
   .brand-text { min-width: 0; }
   .brand-text h1 { white-space: nowrap; }
-  .top-actions { margin-left: auto; display: flex; gap: 6px; }
+  .group.no-top { border-top: none; }   /* drop the separator under the uploader */
+
+  /* Floating Reset / Export actions, top-right of the preview */
+  .stage-actions { position: absolute; top: 16px; right: 16px; z-index: 10; display: flex; gap: 8px; }
+  .stage-actions .icon-btn {
+    background: rgba(20,20,20,0.5); border-color: rgba(255,255,255,0.18); color: #fff;
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+  }
+  .stage-actions .icon-btn:hover { background: rgba(45,45,45,0.7); }
+  .stage-actions .icon-btn.primary { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+  .stage-actions .icon-btn.primary:hover { background: var(--primary); opacity: 0.9; }
+
   .icon-btn {
     width: 34px; height: 34px; flex: none; display: grid; place-items: center;
     border-radius: calc(var(--radius) - 2px); border: 1px solid var(--border);
@@ -301,18 +312,6 @@
           <h1>Fractalic</h1>
           <div class="sub">Fluted-glass studio</div>
         </div>
-        <div class="top-actions">
-          <button class="icon-btn" id="resetBtn" type="button" title="Reset settings" aria-label="Reset settings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>
-            </svg>
-          </button>
-          <button class="icon-btn primary" id="downloadBtn" type="button" title="Export image" aria-label="Export image">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/>
-            </svg>
-          </button>
-        </div>
       </div>
 
       <div class="group">
@@ -324,7 +323,7 @@
         </label>
       </div>
 
-      <div class="group">
+      <div class="group no-top">
         <span class="label">Glass</span>
 
         <div class="ctrl" data-var="--rib-width" data-min="8" data-max="80" data-step="1" data-unit="px">
@@ -382,6 +381,20 @@
       <div class="layer ribs"></div>
       <div class="layer grain"></div>
       <div class="layer vignette"></div>
+
+      <!-- Floating actions, top-right of the preview -->
+      <div class="stage-actions">
+        <button class="icon-btn" id="resetBtn" type="button" title="Reset settings" aria-label="Reset settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>
+          </svg>
+        </button>
+        <button class="icon-btn primary" id="downloadBtn" type="button" title="Export image" aria-label="Export image">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/>
+          </svg>
+        </button>
+      </div>
     </main>
   </div>
 
@@ -800,7 +813,7 @@
       document.getElementById('panel').classList.toggle('open'));
 
     /* ---- Build version (console only) -------------------------------------- */
-    const VERSION = '2026-07-05.5';
+    const VERSION = '2026-07-05.6';
     console.log('%cFractalic build ' + VERSION, 'color:#8f8f8f');
 
     syncGlass();
